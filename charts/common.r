@@ -32,6 +32,7 @@ jmhBarChart = function (data, fill, fillLabel, xLabel, yLabel, title=NULL, x="Be
 	g = g + geom_bar(stat="identity", position="dodge", color="black", width=0.9)
 	g = g + geom_errorbar(width=.33, size=.5, position=position_dodge(0.9))
 	g = g + labs(x=xLabel, y=yLabel, fill=fillLabel) + geom_hline(yintercept=0)
+	g = g + theme(legend.position = "none")
 	if (!rstudio) {
 		if (length(title) != 0) g = g + ggtitle(title)
 		g = g + theme(text=element_text(size=16))
