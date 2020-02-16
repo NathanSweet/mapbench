@@ -24,7 +24,6 @@ import java.util.HashSet;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -61,7 +60,7 @@ public class RemoveBenchmark {
 
 	@State(Scope.Thread)
 	static public class CuckooState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -77,7 +76,7 @@ public class RemoveBenchmark {
 
 	@State(Scope.Thread)
 	static public class HashSetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -93,7 +92,7 @@ public class RemoveBenchmark {
 
 	@State(Scope.Thread)
 	static public class MerrySetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;

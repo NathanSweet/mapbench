@@ -89,13 +89,13 @@ public class Wordlist {
 				}
 			}
 
-			if (seed != DEFAULT_SEED) {
-				final Random rng = new Random(seed);
+//			if (seed != DEFAULT_SEED) {
+				final Random rng = new Random(1234);
 				final int n = words.size();
 				for (int i = n; i > 1; i--) {
 					Collections.swap(words, rng.nextInt(i), i - 1);
 				}
-			}
+//			}
 			words.subList(size, words.size()).clear(); // Truncate
 			return words.toArray(new String[words.size()]);
 		} catch (Exception ex) {

@@ -60,7 +60,7 @@ public class AddBenchmark {
 
 	@State(Scope.Thread)
 	static public class CuckooState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -69,13 +69,12 @@ public class AddBenchmark {
 		@Setup(Level.Trial)
 		public void setup () {
 			words = Wordlist.loadWords(size, seed);
-			System.out.println(words);
 		}
 	}
 
 	@State(Scope.Thread)
 	static public class HashSetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -89,7 +88,7 @@ public class AddBenchmark {
 
 	@State(Scope.Thread)
 	static public class MerrySetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;

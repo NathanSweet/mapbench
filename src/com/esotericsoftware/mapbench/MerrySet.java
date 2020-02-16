@@ -1,6 +1,7 @@
 
 package com.esotericsoftware.mapbench;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -36,18 +37,20 @@ public class MerrySet<T> implements Iterable<T> {
 
 	float loadFactor;
 	int threshold;
-	/** Used by {@link #place(Object)} to bit-shift the upper bits of a {@code long} into a usable range (less than or equal to
-	 * {@link #mask}, greater than or equal to 0). If you're setting it in a subclass, this shift can be negative, which is a
-	 * convenient way to match the number of bits in mask; if mask is a 7-bit number, then a shift of -7 will correctly shift the
-	 * upper 7 bits into the lowest 7 positions. If using what this class sets, shift will be greater than 32 and less than 64; if
-	 * you use this shift with an int, it will still correctly move the upper bits of an int to the lower bits, thanks to Java's
-	 * implicit modulus on shifts. <br>
-	 * You can also use {@link #mask} to mask the low bits of a number, which may be faster for some hashCode()s, if you
-	 * reimplement {@link #place(Object)}. */
+
+	/** Used by {@link #place(Object)} to bit shift the upper bits of a {@code long} into a usable range (&gt;= 0 and &lt;=
+	 * {@link #mask}). The shift can be negative, which is convenient to match the number of bits in mask: if mask is a 7-bit
+	 * number, a shift of -7 shifts the upper 7 bits into the lowest 7 positions. This class sets the shift &gt; 32 and &lt; 64,
+	 * which if used with an int will still move the upper bits of an int to the lower bits due to Java's implicit modulus on
+	 * shifts.
+	 * <p>
+	 * {@link #mask} can also be used to mask the low bits of a number, which may be faster for some hashcodes, if
+	 * {@link #place(Object)} is overridden. */
 	protected int shift;
-	/** The bitmask used to contain hashCode()s to the indices that can be fit into the key array this uses. This should always be
-	 * all-1-bits in its low positions; that is, it must be a power of two minus 1. If you subclass and change
-	 * {@link #place(Object)}, you may want to use this instead of {@link #shift} to isolate usable bits of a hash. */
+
+	/** A bitmask used to confine hashcodes to the size of the table. Must be all 1 bits in its low positions, ie a power of two
+	 * minus 1. If {@link #place(Object)} is overriden, this can be used instead of {@link #shift} to isolate usable bits of a
+	 * hash. */
 	protected int mask;
 
 	private ObjectSetIterator iterator1, iterator2;
@@ -58,7 +61,6 @@ public class MerrySet<T> implements Iterable<T> {
 	}
 
 	/** Creates a new set with a load factor of 0.8.
-	 *
 	 * @param initialCapacity If not a power of two, it is increased to the next nearest power of two. */
 	public MerrySet (int initialCapacity) {
 		this(initialCapacity, 0.8f);
@@ -66,7 +68,6 @@ public class MerrySet<T> implements Iterable<T> {
 
 	/** Creates a new set with the specified initial capacity and load factor. This set will hold initialCapacity items before
 	 * growing the backing table.
-	 *
 	 * @param initialCapacity If not a power of two, it is increased to the next nearest power of two. */
 	public MerrySet (int initialCapacity, float loadFactor) {
 		if (initialCapacity < 0) throw new IllegalArgumentException("initialCapacity must be >= 0: " + initialCapacity);
@@ -90,73 +91,44 @@ public class MerrySet<T> implements Iterable<T> {
 		size = set.size;
 	}
 
-	/** Finds an array index between 0 and {@link #mask}, both inclusive, corresponding to the hash code of {@code item}. By
-	 * default, this uses "Fibonacci Hashing" on the {@link Object#hashCode()} of {@code item}; this multiplies
-	 * {@code item.hashCode()} by a long constant (2 to the 64, divided by the golden ratio) and shifts the high-quality uppermost
-	 * bits into the lowest positions so they can be used as array indices. The multiplication by a long may be somewhat slow on
-	 * GWT, but it will be correct across all platforms and won't lose precision. Using Fibonacci Hashing allows even very poor
-	 * hashCode() implementations, such as those that only differ in their upper bits, to work in a hash table without heavy
-	 * collision rates. It has known problems when all or most hashCode()s are multiples of larger Fibonacci numbers; see <a href=
-	 * "https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/">this
-	 * blog post by Malte Skarupke</a> for more details. In the unlikely event that most of your hashCode()s are Fibonacci numbers,
-	 * you can subclass this to change this method, which is a one-liner in this form:
-	 * {@code return (int) (item.hashCode() * 0x9E3779B97F4A7C15L >>> shift);} <br>
-	 * This can be overridden by subclasses, which you may want to do if your key type needs special consideration for its hash
-	 * (such as if you can't modify or extend a particular class that has an incorrect hashCode()). Subclasses that don't need the
-	 * collision decrease of Fibonacci Hashing (assuming the key class has a good hashCode()) may do fine with a simple
-	 * implementation: {@code return (item.hashCode() & mask);}
-	 *
-	 * @param item a key that this method will hash, by default by calling {@link Object#hashCode()} on it; non-null
-	 * @return an int between 0 and {@link #mask}, both inclusive */
-	protected int place (final T item) {
-		// shift is always greater than 32, less than 64
+	/** Returns an index >= 0 and <= {@link #mask} for the specified {@code item}.
+	 * <p>
+	 * The default implementation uses Fibonacci hashing on the item's {@link Object#hashCode()}: the hashcode is multiplied by a
+	 * long constant (2 to the 64th, divided by the golden ratio) then the uppermost bits are shifted into the lowest positions to
+	 * obtain an index in the desired range. Multiplication by a long may be slower than int (eg on GWT) but greatly improves
+	 * rehashing, allowing even very poor hashcodes, such as those that only differ in their upper bits, to be used without high
+	 * collision rates. Fibonacci hashing has increased collision rates when all or most hashcodes are multiples of larger
+	 * Fibonacci numbers (see <a href=
+	 * "https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/">Malte
+	 * Skarupke's blog post</a>).
+	 * <p>
+	 * This method can be overriden to customizing hashing. This may be useful eg in the unlikely event that most hashcodes are
+	 * Fibonacci numbers, if keys provide poor or incorrect hashcodes, or to simplify hashing if keys provide high quality
+	 * hashcodes and don't need Fibonacci hashing: {@code return item.hashCode() & mask;} */
+	protected int place (T item) {
 		return (int)(item.hashCode() * 0x9E3779B97F4A7C15L >>> shift);
 	}
 
-	private int locateKey (final T key) {
-
-		return locateKey(key, place(key));
-	}
-
-	/** Given a key and its initial placement to try in an array, this finds the actual location of the key in the array if it is
-	 * present, or -1 if the key is not present. This can be overridden if a subclass needs to compare for equality differently
-	 * than just by calling {@link Object#equals(Object)}, but only within the same package.
-	 *
-	 * @param key a K key that will be checked for equality if a similar-seeming key is found
-	 * @param placement as calculated by {@link #place(Object)}, almost always with {@code place(key)}
-	 * @return the location in the key array of key, if found, or -1 if it was not found. */
-	int locateKey (final T key, final int placement) {
-		for (int i = placement;; i = i + 1 & mask) {
-			// empty space is available
-			if (keyTable[i] == null) {
-				return -1;
-			}
-			if (key.equals(keyTable[i])) {
-				return i;
-			}
+	/** Returns the index of the key if already present, else -(index + 1) for the next empty index. This can be overridden in this
+	 * pacakge to compare for equality differently than {@link Object#equals(Object)}. */
+	int locateKey (T key) {
+		if (key == null) throw new IllegalArgumentException("key cannot be null.");
+		T[] keyTable = this.keyTable;
+		for (int i = place(key);; i = i + 1 & mask) {
+			T other = keyTable[i];
+			if (other == null) return -(i + 1); // Empty space is available.
+			if (other.equals(key)) return i; // Same key was found.
 		}
 	}
 
 	/** Returns true if the key was not already in the set. If this set already contains the key, the call leaves the set unchanged
 	 * and returns false. */
 	public boolean add (T key) {
-		if (key == null) throw new IllegalArgumentException("key cannot be null.");
-		T[] keyTable = this.keyTable;
-		int b = place(key);
-		// an identical key already exists
-		if (locateKey(key, b) != -1) {
-			return false;
-		}
-		for (int i = b;; i = (i + 1) & mask) {
-			// space is available so we insert and break (resize is later)
-			if (keyTable[i] == null) {
-				keyTable[i] = key;
-				break;
-			}
-		}
-		if (++size >= threshold) {
-			resize(keyTable.length << 1);
-		}
+		int i = locateKey(key);
+		if (i >= 0) return false; // Existing key was found.
+		i = -(i + 1); // Empty space was found.
+		keyTable[i] = key;
+		if (++size >= threshold) resize(keyTable.length << 1);
 		return true;
 	}
 
@@ -167,7 +139,7 @@ public class MerrySet<T> implements Iterable<T> {
 	public void addAll (Array<? extends T> array, int offset, int length) {
 		if (offset + length > array.size)
 			throw new IllegalArgumentException("offset + length must be <= size: " + offset + " + " + length + " <= " + array.size);
-		addAll((T[])array.items, offset, length);
+		addAll(array.items, offset, length);
 	}
 
 	public boolean addAll (T... array) {
@@ -184,41 +156,37 @@ public class MerrySet<T> implements Iterable<T> {
 
 	public void addAll (MerrySet<T> set) {
 		ensureCapacity(set.size);
-		final T[] keyTable = set.keyTable;
-		T t;
+		T[] keyTable = set.keyTable;
 		for (int i = 0, n = keyTable.length; i < n; i++) {
-			if ((t = keyTable[i]) != null) add(t);
+			T key = keyTable[i];
+			if (key != null) add(key);
 		}
 	}
 
-	/** Skips checks for existing keys. */
+	/** Skips checks for existing keys, doesn't increment size. */
 	private void addResize (T key) {
 		T[] keyTable = this.keyTable;
 		for (int i = place(key);; i = (i + 1) & mask) {
-			// space is available so we insert and break
 			if (keyTable[i] == null) {
 				keyTable[i] = key;
-				break;
+				return;
 			}
 		}
-		++size;
 	}
 
 	/** Returns true if the key was removed. */
 	public boolean remove (T key) {
-		int loc = locateKey(key);
-		if (loc == -1) {
-			return false;
+		int i = locateKey(key);
+		if (i < 0) return false;
+		T[] keyTable = this.keyTable;
+		int next = i + 1 & mask;
+		while ((key = keyTable[next]) != null && next != place(key)) {
+			keyTable[i] = key;
+			i = next;
+			next = next + 1 & mask;
 		}
-
-		int nl = (loc + 1 & mask);
-		while ((key = keyTable[nl]) != null && nl != place(key)) {
-			keyTable[loc] = key;
-			loc = nl;
-			nl = loc + 1 & mask;
-		}
-		keyTable[loc] = null;
-		--size;
+		keyTable[i] = null;
+		size--;
 		return true;
 	}
 
@@ -257,21 +225,17 @@ public class MerrySet<T> implements Iterable<T> {
 	 * iteration can be unnecessarily slow. {@link #clear(int)} can be used to reduce the capacity. */
 	public void clear () {
 		if (size == 0) return;
-		T[] keyTable = this.keyTable;
-		for (int i = keyTable.length; i > 0;) {
-			keyTable[--i] = null;
-		}
 		size = 0;
+		Arrays.fill(keyTable, null);
 	}
 
 	public boolean contains (T key) {
-		return locateKey(key) != -1;
+		return locateKey(key) >= 0;
 	}
 
-	/** @return May be null. */
 	public T get (T key) {
-		final int loc = locateKey(key);
-		return loc == -1 ? null : keyTable[loc];
+		int i = locateKey(key);
+		return i < 0 ? null : keyTable[i];
 	}
 
 	public T first () {
@@ -298,9 +262,7 @@ public class MerrySet<T> implements Iterable<T> {
 
 		keyTable = (T[])(new Object[newSize]);
 
-		int oldSize = size;
-		size = 0;
-		if (oldSize > 0) {
+		if (size > 0) {
 			for (int i = 0; i < oldCapacity; i++) {
 				T key = oldKeyTable[i];
 				if (key != null) addResize(key);
@@ -310,11 +272,9 @@ public class MerrySet<T> implements Iterable<T> {
 
 	public int hashCode () {
 		int h = size;
-		for (int i = 0, n = keyTable.length; i < n; i++) {
-			if (keyTable[i] != null) {
-				h += keyTable[i].hashCode();
-			}
-		}
+		T[] keyTable = this.keyTable;
+		for (int i = 0, n = keyTable.length; i < n; i++)
+			if (keyTable[i] != null) h += keyTable[i].hashCode();
 		return h;
 	}
 
@@ -413,7 +373,7 @@ public class MerrySet<T> implements Iterable<T> {
 			if (currentIndex < 0) throw new IllegalStateException("next must be called before remove.");
 
 			K[] keyTable = set.keyTable;
-			final int mask = set.mask;
+			int mask = set.mask;
 			int loc = currentIndex, nl = (loc + 1 & mask);
 			K key;
 			while ((key = keyTable[nl]) != null && nl != set.place(key)) {

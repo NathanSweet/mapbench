@@ -65,7 +65,7 @@ public class ContainsBenchmark {
 
 	@State(Scope.Thread)
 	static public class CuckooState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -74,7 +74,6 @@ public class ContainsBenchmark {
 		@Setup(Level.Trial)
 		public void setup () {
 			words = Wordlist.loadWords(size, seed);
-			System.out.println(words.length);
 			for (int i = 0, n = words.length; i < n; i++) {
 				set.add(words[i]);
 				++i; // Skip adding every other word so half the contains return false (is this reasonable for real world?).
@@ -84,7 +83,7 @@ public class ContainsBenchmark {
 
 	@State(Scope.Thread)
 	static public class HashSetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
@@ -102,7 +101,7 @@ public class ContainsBenchmark {
 
 	@State(Scope.Thread)
 	static public class MerrySetState {
-		@Param({"100", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
+		@Param({"100", "256", "1000", "10000", "100000", "1000000"}) public int size; // Words to load from the file.
 		@Param({"-1"}) public int seed = -1; // -1: no random shuffling
 
 		public String[] words;
